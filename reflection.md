@@ -23,13 +23,21 @@ plan
 **a. Initial design**
 
 - Briefly describe your initial UML design.
+
+
 - What classes did you include, and what responsibilities did you assign to each?
+- owner stores name, available minutes, and overworked status. it calculates how much work time they can give and their task style. it keeps the schedule within what owner can handle.
+- pet stores name, age, species, and exercise needs. it checks if the pet needs activity or medicine. it guides which tasks the plan must include.
+- task stores minutes, optional deadline, required flag, and type. it checks if due or high priority and gives a short description. it is the unit the planner sorts and picks.
+- plan stores date, total minutes used, and task list. it adds tasks and updates total time. it is the final daily schedule container.
 
 **b. Design changes**
 
-- Did your design change during implementation?
+- Did your design change during implementation? 
+Yes
 - If yes, describe at least one change and why you made it.
-
+CoPilot me tioned a good point about how the plan class has no relation to owner or pet
+it recommended adding owner:owner and per: pet to plan to ensure the right owner is mapped to the right pet
 ---
 
 ## 2. Scheduling Logic and Tradeoffs

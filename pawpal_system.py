@@ -48,10 +48,16 @@ class Owner:
 
 
 class Plan:
-    def __init__(self, plan_date: date):
+    def __init__(self, plan_date: date, owner: Owner, pet: Pet):
         self.date = plan_date
+        self.owner = owner
+        self.pet = pet
         self.total_timetaken = 0  # in minutes
         self.entries: List[Task] = []
 
     def add_entry(self, task: Task) -> None:
-        pass
+        self.entries.append(task)
+        self.total_timetaken += task.duration
+
+    def can_add_task(self, task: Task) -> bool:
+        return self.total_timetaken + task.duration <= self.owner.maximum_workminutes()
