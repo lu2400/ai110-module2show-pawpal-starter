@@ -7,6 +7,7 @@ from typing import Dict, List, Optional
 class Task:
     name: str
     time: str
+    priority: str = "medium"
     frequency: Optional[str] = None
     completed: bool = False
     description: Optional[str] = None
@@ -18,6 +19,9 @@ class Task:
             self.description = self.name
         if self.due_date is None:
             self.due_date = date.today()
+        self.priority = self.priority.lower()
+        if self.priority not in ("low", "medium", "high"):
+            self.priority = "medium"
 
     def is_due(self, now: Optional[datetime] = None) -> bool:
         """Check if the task is due based on the scheduled time."""
@@ -32,14 +36,18 @@ class Task:
 
     def is_priority(self) -> bool:
         """Determine if the task is high priority."""
+        if self.priority == "high":
+            return True
         return self.frequency == "daily" or "med" in (self.description or "").lower()
 
     def describe(self) -> str:
         """Return a string description of the task."""
         flag = "✅" if self.completed else "⬜"
+        priority_icons = {"high": "🔴", "medium": "🟡", "low": "🟢"}
+        icon = priority_icons.get(self.priority, "🟡")
         freq = f" ({self.frequency})" if self.frequency else ""
         date_str = f" on {self.due_date}" if self.due_date else ""
-        return f"{flag} {self.description} at {self.time}{date_str}{freq}"
+        return f"{flag} {icon} {self.description} at {self.time}{date_str}{freq}"
 
     def mark_completed(self) -> None:
         """Mark the task as completed."""
@@ -140,13 +148,12 @@ class Scheduler:
 
     def prioritize(self, tasks: List[Task]) -> List[Task]:
         """Prioritize the list of tasks."""
+        priority_order = {"high": 0, "medium": 1, "low": 2}
+
         def sort_key(t: Task):
-            pri = 0
-            if t.is_priority():
-                pri -= 10
-            if t.is_due():
-                pri -= 5
-            return (not t.completed, pri, t.time)
+            priority_rank = priority_order.get(t.priority, 1)
+            due_rank = 0 if t.is_due() else 1
+            return (not t.completed, priority_rank, due_rank, t.time)
 
         return sorted(tasks, key=sort_key)
 

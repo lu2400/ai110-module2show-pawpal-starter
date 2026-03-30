@@ -30,6 +30,18 @@ The `Scheduler` class has two extra features:
 
 - **Conflict detection** — `find_conflicts()` checks whether any two tasks are scheduled at the same time. If conflicts are found, a warning is printed so the owner can fix the schedule before it causes problems.
 
+## Implemented Feature List
+
+- Sorting by time: `Scheduler.sort_by_time()`
+- Priority and due-based ordering: `Scheduler.prioritize()`
+- Time budget scheduling: `Scheduler.schedule()` with `Owner.maximum_workminutes()`
+- Task completion and status management: `Task.mark_completed()`, `Pet.pending_tasks()`, `Pet.completed_tasks()`
+- Daily/weekly recurrence: `Scheduler.complete_task()` creates new task occurrences
+- `Task.due_date` tracking and defaulting to today
+- Owner-level task filtering: `Owner.filter_tasks(completed, pet_name)`
+- Conflict warnings: `Scheduler.find_conflicts()`
+- Overworked owner constraint (half availability when flagged)
+
 ## Testing PawPal+
 
 ### Run the tests
@@ -73,3 +85,6 @@ pip install -r requirements.txt
 5. Add tests to verify key behaviors.
 6. Connect your logic to the Streamlit UI in `app.py`.
 7. Refine UML so it matches what you actually built.
+
+# 📸 Demo
+![alt text](image.png)

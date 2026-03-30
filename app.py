@@ -3,115 +3,182 @@ from pawpal_system import Pet, Owner, Task, Scheduler
 
 st.set_page_config(page_title="PawPal+", page_icon="🐾", layout="centered")
 
-st.title("🐾 PawPal+")
+# ── constants ─────────────────────────────────────────────────────────────────
 
-# Persist Owner in session_state
-if 'owner' not in st.session_state:
+PRIORITY_ICON = {"high": "🔴", "medium": "🟡", "low": "🟢"}
+SPECIES_ICON  = {"dog": "🐶", "cat": "🐱", "other": "🐾"}
+
+TASK_ICON = {
+    "walk":       "🦮",
+    "exercise":   "🏃",
+    "feed":       "🍖",
+    "feeding":    "🍖",
+    "medication": "💊",
+    "meds":       "💊",
+    "groom":      "✂️",
+    "grooming":   "✂️",
+    "play":       "🎾",
+    "vet":        "🏥",
+    "bath":       "🛁",
+}
+
+def task_emoji(name: str) -> str:
+    lower = name.lower()
+    for keyword, icon in TASK_ICON.items():
+        if keyword in lower:
+            return icon
+    return "📋"
+
+# ── session state ─────────────────────────────────────────────────────────────
+
+if "owner" not in st.session_state:
     st.session_state.owner = Owner(name="Jordan", email="jordan@example.com")
 
 owner = st.session_state.owner
 
-st.markdown(
-    """
-Welcome to the PawPal+ starter app.
+# ── header ────────────────────────────────────────────────────────────────────
 
-This file is intentionally thin. It gives you a working Streamlit app so you can start quickly,
-but **it does not implement the project logic**. Your job is to design the system and build it.
-
-Use this app as your interactive demo once your backend classes/functions exist.
-"""
-)
-
-with st.expander("Scenario", expanded=True):
-    st.markdown(
-        """
-**PawPal+** is a pet care planning assistant. It helps a pet owner plan care tasks
-for their pet(s) based on constraints like time, priority, and preferences.
-
-You will design and implement the scheduling logic and connect it to this Streamlit UI.
-"""
-    )
-
-with st.expander("What you need to build", expanded=True):
-    st.markdown(
-        """
-At minimum, your system should:
-- Represent pet care tasks (what needs to happen, how long it takes, priority)
-- Represent the pet and the owner (basic info and preferences)
-- Build a plan/schedule for a day that chooses and orders tasks based on constraints
-- Explain the plan (why each task was chosen and when it happens)
-"""
-    )
-
+st.title("🐾 PawPal+")
+st.caption("Plan your pet's day — sorted by priority, checked for conflicts.")
 st.divider()
 
-st.subheader("Quick Demo Inputs")
-owner_name = st.text_input("Owner name", value=owner.name)
-pet_name = st.text_input("Pet name", value="Mochi")
-species = st.selectbox("Species", ["dog", "cat", "other"])
-age = st.number_input("Pet age", min_value=0, max_value=30, value=3)
-exercise_needs = st.number_input("Exercise needs (minutes/day)", min_value=0, max_value=240, value=30)
+# ── owner + pet setup ─────────────────────────────────────────────────────────
 
-if st.button("Add Pet"):
-    pet = Pet(name=pet_name, species=species, age=age, exercise_needs=exercise_needs)
-    owner.add_pet(pet)
-    st.success(f"Added pet: {pet.name}")
+st.subheader("Your Pets")
 
-# Display current pets
+with st.form("add_pet_form"):
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        pet_name = st.text_input("Name", value="Mochi")
+    with col2:
+        species = st.selectbox("Species", ["dog", "cat", "other"])
+    with col3:
+        age = st.number_input("Age", min_value=0, max_value=30, value=3)
+    with col4:
+        exercise_needs = st.number_input("Exercise (min/day)", min_value=0, max_value=240, value=30)
+    submitted = st.form_submit_button("Add Pet")
+    if submitted:
+        owner.add_pet(Pet(name=pet_name, species=species, age=age, exercise_needs=exercise_needs))
+        st.success(f"Added {SPECIES_ICON.get(species, '🐾')} {pet_name}!")
+
 if owner.pets:
-    st.write("Current Pets:")
-    for pet in owner.pets:
-        st.write(f"- {pet.name} ({pet.species}, {pet.age} years, needs {pet.exercise_needs} min exercise)")
+    cols = st.columns(len(owner.pets))
+    for col, pet in zip(cols, owner.pets):
+        icon = SPECIES_ICON.get(pet.species, "🐾")
+        pending = len(pet.pending_tasks())
+        done    = len(pet.completed_tasks())
+        with col:
+            st.metric(label=f"{icon} {pet.name}", value=f"{pending} pending", delta=f"{done} done")
+            st.caption(f"{pet.species.title()} · age {pet.age} · {pet.exercise_needs} min/day")
 else:
     st.info("No pets added yet.")
 
-st.markdown("### Tasks")
-st.caption("Add tasks to the selected pet.")
+st.divider()
 
-if owner.pets:
-    selected_pet = st.selectbox("Select Pet", [p.name for p in owner.pets])
-    pet = next(p for p in owner.pets if p.name == selected_pet)
-else:
+# ── task input ────────────────────────────────────────────────────────────────
+
+st.subheader("Add a Task")
+
+if not owner.pets:
     st.warning("Add a pet first.")
-    pet = None
+    selected_pet = None
+else:
+    selected_pet_name = st.selectbox("For which pet?", [p.name for p in owner.pets])
+    selected_pet = next(p for p in owner.pets if p.name == selected_pet_name)
 
-col1, col2, col3 = st.columns(3)
-with col1:
-    task_title = st.text_input("Task title", value="Morning walk")
-with col2:
-    duration = st.number_input("Duration (minutes)", min_value=1, max_value=240, value=20)
-with col3:
-    priority = st.selectbox("Priority", ["low", "medium", "high"], index=2)
+    with st.form("add_task_form"):
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            task_title = st.text_input("Task", value="Morning walk")
+        with col2:
+            task_time = st.text_input("Time (e.g. 8:00 AM)", value="8:00 AM")
+        with col3:
+            frequency = st.selectbox("Frequency", ["none", "daily", "weekly"])
+        with col4:
+            priority = st.selectbox("Priority", ["high", "medium", "low"], index=1)
+        add_task = st.form_submit_button("Add Task")
 
-if st.button("Add Task") and pet:
-    task = Task(name=task_title, time="12:00 PM")  # Default time, can be enhanced
-    pet.add_task(task)
-    st.success(f"Added task: {task.name} to {pet.name}")
+    if add_task:
+        freq = None if frequency == "none" else frequency
+        task = Task(name=task_title, time=task_time, frequency=freq, priority=priority)
+        selected_pet.add_task(task)
+        icon = task_emoji(task_title)
+        st.success(f"{icon} **{task.name}** added for {selected_pet.name} — {PRIORITY_ICON[task.priority]} {task.priority.title()} priority at {task.time}.")
 
-# Display tasks
-if pet:
-    if pet.tasks:
-        st.write(f"Tasks for {pet.name}:")
-        for task in pet.tasks:
-            st.write(f"- {task.describe()}")
+# ── task display ──────────────────────────────────────────────────────────────
+
+if selected_pet and selected_pet.tasks:
+    scheduler = Scheduler(owner)
+    sorted_tasks = scheduler.sort_by_time(selected_pet.tasks)
+
+    st.markdown(f"#### {SPECIES_ICON.get(selected_pet.species, '🐾')} {selected_pet.name}'s tasks")
+    st.caption("Sorted by time · 🔴 High  🟡 Medium  🟢 Low")
+
+    st.table([
+        {
+            "":          "✅" if t.completed else "⏳",
+            "Task":      f"{task_emoji(t.name)} {t.name}",
+            "Time":      t.time,
+            "Priority":  f"{PRIORITY_ICON.get(t.priority, '🟡')} {t.priority.title()}",
+            "Frequency": t.frequency.title() if t.frequency else "—",
+            "Due":       str(t.due_date),
+        }
+        for t in sorted_tasks
+    ])
+
+    conflicts = scheduler.find_conflicts()
+    if conflicts:
+        for time_slot, clashing_tasks in conflicts.items():
+            names = " and ".join(
+                f"**{t.name}** ({next((p.name for p in owner.pets if t in p.tasks), '?')})"
+                for t in clashing_tasks
+            )
+            st.warning(f"⚠️ **Conflict at {time_slot}:** {names} overlap. Edit one task's time to fix this.")
     else:
-        st.info(f"No tasks for {pet.name} yet.")
+        st.success("✅ No scheduling conflicts.")
+
+elif selected_pet:
+    st.info(f"No tasks for {selected_pet.name} yet. Add one above.")
 
 st.divider()
 
-st.subheader("Build Schedule")
-st.caption("Generate a daily schedule based on your pets' tasks.")
+# ── schedule generation ───────────────────────────────────────────────────────
 
-if st.button("Generate Schedule"):
-    if not owner.pets:
+st.subheader("📅 Today's Schedule")
+st.caption("Tasks are ordered by priority first, then time. Completed tasks are excluded.")
+
+if st.button("Generate Schedule", type="primary"):
+    if not owner.pets or not owner.all_tasks():
         st.warning("Add pets and tasks first.")
     else:
         scheduler = Scheduler(owner)
+
+        conflicts = scheduler.find_conflicts()
+        if conflicts:
+            st.warning("⚠️ **Your schedule has conflicts — fix these for a reliable plan:**")
+            for time_slot, clashing_tasks in conflicts.items():
+                details = ", ".join(
+                    f"{task_emoji(t.name)} {t.name} ({next((p.name for p in owner.pets if t in p.tasks), '?')})"
+                    for t in clashing_tasks
+                )
+                st.markdown(f"- **{time_slot}:** {details}")
+
         schedule = scheduler.schedule()
         if schedule:
-            st.success("Schedule generated!")
-            st.write("Daily Schedule:")
-            for task in schedule:
-                st.write(f"- {task.describe()}")
+            st.success(f"✅ {len(schedule)} task(s) scheduled within your available time.")
+
+            for i, t in enumerate(schedule, start=1):
+                icon = task_emoji(t.name)
+                p_icon = PRIORITY_ICON.get(t.priority, "🟡")
+                freq_label = f" · 🔁 {t.frequency.title()}" if t.frequency else ""
+                with st.container(border=True):
+                    col_num, col_info, col_badge = st.columns([0.5, 5, 1.5])
+                    with col_num:
+                        st.markdown(f"### {i}")
+                    with col_info:
+                        st.markdown(f"**{icon} {t.name}**")
+                        st.caption(f"🕐 {t.time}{freq_label} · 📅 Due {t.due_date}")
+                    with col_badge:
+                        st.markdown(f"{p_icon} **{t.priority.title()}**")
         else:
-            st.info("No tasks to schedule or time limit reached.")
+            st.info("No tasks fit within the available time.")

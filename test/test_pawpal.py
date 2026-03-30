@@ -97,6 +97,18 @@ def test_sort_by_time_empty_list():
     assert scheduler.sort_by_time([]) == []
 
 
+def test_prioritize_respects_priority_before_time():
+    """High priority tasks appear before medium/low even if time is later."""
+    pet = make_pet()
+    pet.add_task(Task("Low task", "8:00 AM", priority="low"))
+    pet.add_task(Task("High task", "10:00 AM", priority="high"))
+    pet.add_task(Task("Medium task", "9:00 AM", priority="medium"))
+    _, scheduler = make_scheduler(pet)
+
+    order = [t.name for t in scheduler.prioritize(pet.tasks)]
+    assert order == ["High task", "Medium task", "Low task"]
+
+
 # ── recurring tasks ───────────────────────────────────────────────────────────
 
 def test_daily_task_next_due_is_tomorrow():
