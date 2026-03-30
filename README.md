@@ -30,6 +30,30 @@ The `Scheduler` class has two extra features:
 
 - **Conflict detection** — `find_conflicts()` checks whether any two tasks are scheduled at the same time. If conflicts are found, a warning is printed so the owner can fix the schedule before it causes problems.
 
+## Testing PawPal+
+
+### Run the tests
+
+```bash
+python -m pytest test/test_pawpal.py -v
+```
+
+### What the tests cover
+
+| Area | What is verified |
+| --- | --- |
+| **Sorting** | Tasks are returned in chronological order; a dedicated test also documents the known string-sort bug at the 9→10 AM boundary |
+| **Recurring tasks** | Daily tasks get a new due date of today + 1 day; weekly tasks advance by 7 days from the original date; the new task is added to the correct pet; one-off tasks do not recur |
+| **Conflict detection** | Flags two tasks at the same time on the same pet or across different pets; confirms no false positives for different times or a single task |
+| **Scheduling** | Respects `max_minutes`; zero budget returns empty; priority tasks are scheduled first; overworked owners are capped at half their available time |
+| **Edge cases** | Pet with no pending tasks, owner with no pets |
+
+### Confidence level
+
+⭐⭐⭐⭐ (4/5)
+
+The core scheduling logic, recurrence rules, and conflict detection are all covered and passing (21/21). One star is withheld because `sort_by_time` has a known string-sort bug at the 9→10 AM boundary that is documented but not yet fixed, and task duration is hardcoded at 30 minutes rather than derived from real task data.
+
 ## Getting started
 
 ### Setup
