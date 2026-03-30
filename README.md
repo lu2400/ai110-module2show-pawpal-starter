@@ -87,4 +87,4 @@ pip install -r requirements.txt
 7. Refine UML so it matches what you actually built.
 
 # 📸 Demo
-![alt text](image.png)
+![alt text](image-1.png)
