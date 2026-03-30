@@ -22,6 +22,14 @@ Your final app should:
 - Display the plan clearly (and ideally explain the reasoning)
 - Include tests for the most important scheduling behaviors
 
+## Smarter Scheduling
+
+The `Scheduler` class has two extra features:
+
+- **Recurring tasks** — marking a daily or weekly task complete automatically adds the next one to the pet's list. Daily tasks are always due tomorrow; weekly tasks are due 7 days later.
+
+- **Conflict detection** — `find_conflicts()` checks whether any two tasks are scheduled at the same time. If conflicts are found, a warning is printed so the owner can fix the schedule before it causes problems.
+
 ## Getting started
 
 ### Setup

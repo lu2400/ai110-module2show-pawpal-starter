@@ -37,7 +37,7 @@ plan
 Yes
 - If yes, describe at least one change and why you made it.
 CoPilot me tioned a good point about how the plan class has no relation to owner or pet
-it recommended adding owner:owner and per: pet to plan to ensure the right owner is mapped to the right pet
+it recommended adding owner:owner and pet: pet to plan to ensure the right owner is mapped to the right pet
 ---
 
 ## 2. Scheduling Logic and Tradeoffs
@@ -50,8 +50,12 @@ it recommended adding owner:owner and per: pet to plan to ensure the right owner
 **b. Tradeoffs**
 
 - Describe one tradeoff your scheduler makes.
-- Why is that tradeoff reasonable for this scenario?
+it assigns 30 minutes to every task regardless.
 
+- Why is that tradeoff reasonable for this scenario?
+i was trying to prioritise the owner's time.
+assuming some tasks will take longer than others, schedule tries to avoid giving the owner too many tasks.
+Better for the owner to have some free time than none at all before needing to do something important.
 ---
 
 ## 3. AI Collaboration

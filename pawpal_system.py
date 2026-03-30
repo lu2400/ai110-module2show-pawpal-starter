@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
-from datetime import datetime
-from typing import List, Optional
+from datetime import date, datetime, timedelta
+from typing import Dict, List, Optional
 
 
 @dataclass
@@ -10,11 +10,14 @@ class Task:
     frequency: Optional[str] = None
     completed: bool = False
     description: Optional[str] = None
+    due_date: Optional[date] = None
 
     def __post_init__(self):
-        """Set description to name if not provided."""
+        """Set description to name if not provided. Default due_date to today."""
         if self.description is None:
             self.description = self.name
+        if self.due_date is None:
+            self.due_date = date.today()
 
     def is_due(self, now: Optional[datetime] = None) -> bool:
         """Check if the task is due based on the scheduled time."""
@@ -35,7 +38,8 @@ class Task:
         """Return a string description of the task."""
         flag = "✅" if self.completed else "⬜"
         freq = f" ({self.frequency})" if self.frequency else ""
-        return f"{flag} {self.description} at {self.time}{freq}"
+        date_str = f" on {self.due_date}" if self.due_date else ""
+        return f"{flag} {self.description} at {self.time}{date_str}{freq}"
 
     def mark_completed(self) -> None:
         """Mark the task as completed."""
@@ -100,8 +104,33 @@ class Owner:
         """Return the list of task preferences."""
         return ["medication", "feeding", "exercise", "grooming", "play"]
 
+    def filter_tasks(self, completed=None, pet_name=None) -> List[Task]:
+        """Filter tasks by completion status and/or pet name.
+        
+        Args:
+            completed: If True, return completed tasks; if False, pending; if None, all.
+            pet_name: If provided, filter to tasks for that pet; if None, all pets.
+        
+        Returns:
+            List of filtered tasks.
+        """
+        tasks = self.all_tasks()
+        
+        if pet_name is not None:
+            tasks = [t for pet in self.pets if pet.name == pet_name for t in pet.tasks]
+        
+        if completed is not None:
+            tasks = [t for t in tasks if t.completed == completed]
+        
+        return tasks
+
 
 class Scheduler:
+
+    def sort_by_time(self, tasks: List[Task]) -> List[Task]:
+        """Sort tasks by their scheduled time."""
+        return sorted(tasks, key=lambda t: t.time)
+
     def __init__(self, owner: Owner):
         self.owner = owner
 
@@ -136,6 +165,70 @@ class Scheduler:
 
         return schedule
 
-    def complete_task(self, task: Task) -> None:
-        """Mark a task as completed."""
+    def complete_task(self, task: Task) -> Optional[Task]:
+        """Mark a task as completed and auto-schedule the next occurrence for recurring tasks.
+
+        For "daily" tasks, the next due date is always today + 1 day, anchored
+        to the current date rather than the original due date so that late
+        completions don't cascade into the past.
+
+        For "weekly" tasks, the next due date is the original due date + 7 days,
+        preserving the day-of-week cadence.
+
+        The new task is appended to the same pet's task list automatically.
+
+        Args:
+            task: The task to mark as completed.
+
+        Returns:
+            The newly created next-occurrence Task for recurring tasks,
+            or None if the task has no frequency set.
+        """
         task.mark_completed()
+
+        if task.frequency not in ("daily", "weekly"):
+            return None
+
+        if task.frequency == "daily":
+            next_due = date.today() + timedelta(days=1)
+        else:
+            next_due = task.due_date + timedelta(days=7)
+
+        next_task = Task(
+            name=task.name,
+            time=task.time,
+            frequency=task.frequency,
+            description=task.description,
+            due_date=next_due,
+        )
+
+        for pet in self.owner.pets:
+            if task in pet.tasks:
+                pet.add_task(next_task)
+                break
+
+        return next_task
+
+    def find_conflicts(self, tasks: Optional[List[Task]] = None) -> Dict[str, List[Task]]:
+        """Detect scheduling conflicts by finding tasks that share the same time slot.
+
+        Compares tasks across all pets by default, or against a caller-supplied
+        list. Uses a single O(n) pass to group tasks by their time string, then
+        filters to only the slots where two or more tasks overlap.
+
+        Args:
+            tasks: Tasks to check. Defaults to all tasks across all of the
+                   owner's pets if not provided.
+
+        Returns:
+            A dict mapping each conflicting time string to the list of tasks
+            scheduled at that time. Empty dict means no conflicts.
+        """
+        if tasks is None:
+            tasks = self.owner.all_tasks()
+
+        time_groups: Dict[str, List[Task]] = {}
+        for task in tasks:
+            time_groups.setdefault(task.time, []).append(task)
+
+        return {time: group for time, group in time_groups.items() if len(group) > 1}
