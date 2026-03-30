@@ -1,6 +1,24 @@
 # PawPal+ Project Reflection
 
 ## 1. System Design
+### Core Actions
+1. User should be able to add their and their pet information
+2. User should be able to add a task
+3. User should be able to display tasks to view
+
+classes
+owner
+    methods - maximum_workminutes, task_preference
+    attributes - name, time_availability, is_overworked
+pet
+    methods - needs_activity, needs_drugs
+    attributes - name, age, species (?), exercise_needs
+task
+    attributes - duration, deadline, is_required, type
+    methods - is_due, is_priority, describe
+plan
+    methods - add_entry
+    attributes - date, total_timetaken, entries
 
 **a. Initial design**
 
